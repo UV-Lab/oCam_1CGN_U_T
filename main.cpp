@@ -15,8 +15,9 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "opencv2/opencv.hpp"
-#include "withrobot_camera.hpp"	/* withrobot camera API */
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui.hpp>
+#include "api/withrobot_camera.hpp"	/* withrobot camera API */
 
 /*
  *	Main
@@ -115,7 +116,8 @@ int main (int argc, char* argv[])
     std::string windowName = camName + " " + camSerialNumber;
     cv::Mat srcImg(cv::Size(camFormat.width, camFormat.height), CV_8UC1);
     cv::Mat colorImg(cv::Size(camFormat.width, camFormat.height), CV_8UC3);
-    cv::namedWindow(windowName.c_str(), CV_WINDOW_KEEPRATIO|CV_WINDOW_AUTOSIZE);
+    cv::namedWindow(windowName.c_str());
+    // cv::namedWindow(windowName.c_str(), CV_WINDOW_KEEPRATIO|CV_WINDOW_AUTOSIZE);
 
     /*
      * Main loop
