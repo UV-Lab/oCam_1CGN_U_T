@@ -46,28 +46,32 @@ int main (int argc, char* argv[])
      */
 
     // Use designated port when given
-    std::string devPath;
+    std::string devPath = "";
     if (argc == 2){
     devPath = argv[1];
     }
     else {
+        std::vector<std::string> paths;
         // Withrobot camera id would be like "usb-WITHROBOT_Inc._oCam-1CGN-U-T_SN_35E27013-video-index0"
         for (const auto& entry : std::filesystem::directory_iterator("/dev/v4l/by-id") ) {
             if (entry.is_character_file() && (entry.path().filename().string().find("1CGN-U-T") != std::string::npos)) {
                 auto path = entry.path().parent_path();
                 path /= std::filesystem::read_symlink(entry.path());
                 path = std::filesystem::canonical(path);
-                devPath = path;
-                break;
+                paths.push_back(path);
             }
         }
+        // Singel camera can contain two video pahts, normally ealier one gives image
+        std::sort(paths.begin(), paths.end());
+        devPath = paths.front();
     }
 
     Withrobot::Camera camera(devPath);
 
     /* USB 3.0 */
     /* bayer RBG 1280 x 720 60 fps */
-    camera.set_format(1280, 720, Withrobot::fourcc_to_pixformat('G','B','G','R'), 1, 60);
+    // camera.set_format(1280, 720, Withrobot::fourcc_to_pixformat('G','B','G','R'), 1, 60);
+    camera.set_format(640, 480, Withrobot::fourcc_to_pixformat('G','B','G','R'), 1, 30);
 
     /* bayer RBG 1280 x 960 45 fps */
     //camera.set_format(1280, 960, Withrobot::fourcc_to_pixformat('G','B','G','R')), 1, 45);
@@ -115,11 +119,22 @@ int main (int argc, char* argv[])
      *  [1] "Exposure (Absolute)", Value(default [min, step, max]): 39 ( 39 [1, 1, 625] )
      *
      */
-    int brightness = camera.get_control("Gain");
-    int exposure = camera.get_control("Exposure (Absolute)");
+    
+    const int32_t INTI_EXPOSURE_ABS = 130;
+    camera.set_control("Exposure Time, Absolute", INTI_EXPOSURE_ABS);
 
-    camera.set_control("Gain", brightness);
-    camera.set_control("Exposure (Absolute)", exposure);
+    const int32_t INIT_BRIGHTNESS = 110;
+    camera.set_control("Gain", INIT_BRIGHTNESS);
+
+    // 1 - Manual mode, 3 - Apeture priority mode
+    // see v4l2-ctl -d[#] --all
+    const int32_t INTI_AUTO_EXPOSURE = 1;
+    const auto auto_exposure = camera.get_control("Auto Exposure");
+    camera.set_control("Auto Exposure", 1);
+
+    std::cout << "Current Gain: " << camera.get_control("Gain") << std::endl;
+    std::cout << "Current Exposure Time: " << camera.get_control("Exposure Time, Absolute") << std::endl;
+    std::cout << "Current Auto Exposure Mode: " << camera.get_control("Auto Exposure") << std::endl;
 
     /*
      * Start streaming
@@ -136,7 +151,6 @@ int main (int argc, char* argv[])
     cv::Mat srcImg(cv::Size(camFormat.width, camFormat.height), CV_8UC1);
     cv::Mat colorImg(cv::Size(camFormat.width, camFormat.height), CV_8UC3);
     cv::namedWindow(windowName.c_str());
-    // cv::namedWindow(windowName.c_str(), CV_WINDOW_KEEPRATIO|CV_WINDOW_AUTOSIZE);
 
     /*
      * Main loop
@@ -168,28 +182,36 @@ int main (int argc, char* argv[])
     		break;
 
     	/* When press the '[' key then decrease the exposure time. */
-    	case '[':
-    		exposure = camera.get_control("Exposure (Absolute)");
-    		camera.set_control("Exposure (Absolute)", --exposure);
+    	case '[': {
+    		int exposure = camera.get_control("Exposure Time, Absolute");
+    		camera.set_control("Exposure Time, Absolute", --exposure);
+            std::cout << exposure << std::endl;
     		break;
+        }
 
 		/* When press the ']' key then increase the exposure time. */
-    	case ']':
-    		exposure = camera.get_control("Exposure (Absolute)");
-    		camera.set_control("Exposure (Absolute)", ++exposure);
+    	case ']': {
+    		int exposure = camera.get_control("Exposure Time, Absolute");
+    		camera.set_control("Exposure Time, Absolute", ++exposure);
+            std::cout << exposure << std::endl;
     		break;
+        }
 
 		/* When press the '-' key then decrease the brightness. */
-    	case '-':
-    		exposure = camera.get_control("Gain");
+    	case '-': {
+    		int brightness = camera.get_control("Gain");
     		camera.set_control("Gain", --brightness);
+            std::cout << brightness << std::endl;
     		break;
+        }
 
 		/* When press the '=' key then increase the brightness. */
-    	case '=':
-    		exposure = camera.get_control("Gain");
+    	case '=': {
+    		int brightness = camera.get_control("Gain");
     		camera.set_control("Gain", ++brightness);
+            std::cout << brightness << std::endl;
     		break;
+        }
 
     	default:
     		break;
