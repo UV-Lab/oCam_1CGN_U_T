@@ -12,7 +12,9 @@
  *  - Press the key '-' for decrease the brightness.
  */
 
-#include <stdio.h>
+#include <filesystem> // TODO check
+#include <fstream>
+#include <cstdio>
 #include <errno.h>
 
 #include <opencv2/opencv.hpp>
@@ -42,7 +44,24 @@ int main (int argc, char* argv[])
 	 * 	[3] "8-bit Greyscale 640 x 480 80 fps"
 	 *
      */
-	const char* devPath = "/dev/video0";
+
+    // Use designated port when given
+    std::string devPath;
+    if (argc == 2){
+    devPath = argv[1];
+    }
+    else {
+        // Withrobot camera id would be like "usb-WITHROBOT_Inc._oCam-1CGN-U-T_SN_35E27013-video-index0"
+        for (const auto& entry : std::filesystem::directory_iterator("/dev/v4l/by-id") ) {
+            if (entry.is_character_file() && (entry.path().filename().string().find("1CGN-U-T") != std::string::npos)) {
+                auto path = entry.path().parent_path();
+                path /= std::filesystem::read_symlink(entry.path());
+                path = std::filesystem::canonical(path);
+                devPath = path;
+                break;
+            }
+        }
+    }
 
     Withrobot::Camera camera(devPath);
 

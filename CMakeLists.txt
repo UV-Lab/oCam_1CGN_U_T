@@ -22,10 +22,10 @@ endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 add_compile_options(
-    "$<$<CONFIG:Debug>:-Og>"
+    "$<$<CONFIG:Debug>:-O0;-g>"
     "$<$<CONFIG:Release>:-O3>"
     "$<$<CONFIG:None>:-O3>"
-    -std=c++11
+    -std=c++17
     -fPIC
     -W
     -Wfatal-errors

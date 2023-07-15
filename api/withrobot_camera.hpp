@@ -228,7 +228,7 @@ namespace Withrobot {
 		 *  [2] "Brightness",          Value(default [min, step, max]): 64 ( 64 [0, 1, 127] )  // gain
 		 *
          */
-        Camera(const char* dev_name, struct camera_format* conf=0, const char* format_string=0, const unsigned char disable_libv4l2=0);
+        Camera(std::string dev_name, struct camera_format* conf=0, const char* format_string=0, const unsigned char disable_libv4l2=0);
         ~Camera();
 
         bool start();
@@ -270,7 +270,6 @@ namespace Withrobot {
             unsigned char* buffer;
             unsigned int length;
         };
-
 
         struct _v4l2 {
             enum v4l2_buf_type buf_type;

@@ -35,16 +35,16 @@ using namespace Withrobot;
 
 /**
  * Cam class constructor
- * @param dev_name          [입력] 장치 이름
+ * @param name          [입력] 장치 이름
  * @param conf              [출력] 동작 중인 포멧
  * @param format_string     [입력] 사용하고자 하는 포멧
  * @param disable_libv4l2   [입력, 삭제 예정] v4l2_ioctl 사용 여부 결정
  */
-Camera::Camera(const char* dev_name, struct camera_format* conf, const char* format_string, const unsigned char disable_libv4l2) :
-    dev_name(dev_name), disable_libv4l2(disable_libv4l2)
+Camera::Camera(std::string _dev_name, struct camera_format* conf, const char* format_string, const unsigned char disable_libv4l2) :
+    dev_name(std::move(_dev_name)), disable_libv4l2(disable_libv4l2)
 {
     /* open device */
-    fd = open(dev_name, O_RDWR | O_NONBLOCK, 0);
+    fd = open(dev_name.c_str(), O_RDWR | O_NONBLOCK, 0);
     if (fd == -1) {
         DBG_PERROR("Opening video device");
         exit(EXIT_FAILURE);
