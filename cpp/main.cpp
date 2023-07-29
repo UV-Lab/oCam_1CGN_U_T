@@ -12,7 +12,7 @@
  *  - Press the key '-' for decrease the brightness.
  */
 
-#include <filesystem> // TODO check
+#include <filesystem>
 #include <fstream>
 #include <cstdio>
 #include <errno.h>
