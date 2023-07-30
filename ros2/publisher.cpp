@@ -1,5 +1,3 @@
-#include <errno.h>
-
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
@@ -18,7 +16,37 @@ class ImagePublisher : public rclcpp::Node {
  public:
   ImagePublisher() : Node("oCam_publisher") {
     publisher_ =
-        this->create_publisher<sensor_msgs::msg::Image>("image_topic", 10);
+        this->create_publisher<sensor_msgs::msg::Image>("image_topic", 1);
+  }
+
+  void initialize_config() {
+    declare_parameter("device_path", "");  // Blank for auto detection
+
+    /*
+     * oCam-1CGN supported image formats
+     * USB 3.0
+     * 	[0] "8-bit Greyscale 1280 x 720 60 fps"
+     *	[1] "8-bit Greyscale 1280 x 960 45 fps"
+     *	[2] "8-bit Greyscale 320 x 240 160 fps"
+     * 	[3] "8-bit Greyscale 640 x 480 80 fps"
+     *
+     * USB 2.0
+     * 	[0] "8-bit Greyscale 1280 x 720 30 fps"
+     *	[1] "8-bit Greyscale 1280 x 960 22.5 fps"
+     *	[2] "8-bit Greyscale 320 x 240 160 fps"
+     * 	[3] "8-bit Greyscale 640 x 480 80 fps"
+     */
+    declare_parameter("Width", 640);
+    declare_parameter("Height", 480);
+    declare_parameter("FPS", 30);
+
+    // See v4l2-ctl -d[#] --all to check control options
+    // "Gain"(default[min, step, max]) : 64(64 [0, 1, 127])
+    declare_parameter("Brightness", 110);
+    // "Exposure (Absolute)", (default[min, step, max]) : 39(39 [1, 1, 625])
+    declare_parameter("Exposure", 130);
+    declare_parameter("Auto exposure mode",
+                      1);  // 1 - Manual mode, 3 - Apeture priority mode
   }
 
   void publish_image(const cv::Mat& img) {
@@ -45,31 +73,12 @@ class ImagePublisher : public rclcpp::Node {
 int main(int argc, char* argv[]) {
   rclcpp::init(argc, argv);
   auto node = std::make_shared<ImagePublisher>();
-
-  /*
-   * initialize oCam-1CGN
-   *
-   * [ supported image formats ]
-   *
-   * USB 3.0
-   * 	[0] "8-bit Greyscale 1280 x 720 60 fps"
-   *	[1] "8-bit Greyscale 1280 x 960 45 fps"
-   *	[2] "8-bit Greyscale 320 x 240 160 fps"
-   * 	[3] "8-bit Greyscale 640 x 480 80 fps"
-   *
-   * USB 2.0
-   * 	[0] "8-bit Greyscale 1280 x 720 30 fps"
-   *	[1] "8-bit Greyscale 1280 x 960 22.5 fps"
-   *	[2] "8-bit Greyscale 320 x 240 160 fps"
-   * 	[3] "8-bit Greyscale 640 x 480 80 fps"
-   *
-   */
+  node->initialize_config();
 
   // Use designated port when given
-  std::string devPath = "";
-  if (argc == 2) {
-    devPath = argv[1];
-  } else {
+  std::string devPath = node->get_parameter("device_path").as_string();
+
+  if (devPath.empty()) {
     std::vector<std::string> paths;
     // Withrobot camera id would be like
     // "usb-WITHROBOT_Inc._oCam-1CGN-U-T_SN_35E27013-video-index0"
@@ -91,41 +100,10 @@ int main(int argc, char* argv[]) {
 
   Withrobot::Camera camera(devPath);
 
-  /* USB 3.0 */
-  /* bayer RBG 1280 x 720 60 fps */
-  // camera.set_format(1280, 720,
-  // Withrobot::fourcc_to_pixformat('G','B','G','R'), 1, 60);
-  camera.set_format(640, 480,
-                    Withrobot::fourcc_to_pixformat('G', 'B', 'G', 'R'), 1, 30);
-
-  /* bayer RBG 1280 x 960 45 fps */
-  // camera.set_format(1280, 960,
-  // Withrobot::fourcc_to_pixformat('G','B','G','R')), 1, 45);
-
-  /* bayer RBG 320 x 240 160 fps */
-  // camera.set_format(320, 240,
-  // Withrobot::fourcc_to_pixformat('G','B','G','R'), 1, 160);
-
-  /* bayer RBG 640 x 480 80 fps */
-  // camera.set_format(640, 480,
-  // Withrobot::fourcc_to_pixformat('G','B','G','R')'), 1, 80);
-
-  /* USB 2.0 */
-  /* bayer RBG 1280 x 720 30 fps */
-  // camera.set_format(1280, 720,
-  // Withrobot::fourcc_to_pixformat(''G','B','G','R'), 1, 30);
-
-  /* bayer RBG 1280 x 960 22.5 fps */
-  // camera.set_format(1280, 960,
-  // Withrobot::fourcc_to_pixformat(''G','B','G','R'), 2, 45);
-
-  /* bayer RBG 320 x 240 160 fps */
-  // camera.set_format(320, 240,
-  // Withrobot::fourcc_to_pixformat(''G','B','G','R'), 1, 160);
-
-  /* bayer RBG 640 x 480 80 fps */
-  // camera.set_format(640, 480,
-  // Withrobot::fourcc_to_pixformat(''G','B','G','R'), 1, 80);
+  camera.set_format(node->get_parameter("Width").as_int(),
+                    node->get_parameter("Height").as_int(),
+                    Withrobot::fourcc_to_pixformat('G', 'B', 'G', 'R'), 1,
+                    node->get_parameter("FPS").as_int());
 
   /*
    * get current camera format (image size and frame rate)
@@ -141,31 +119,19 @@ int main(int argc, char* argv[]) {
 
   printf("dev: %s, serial number: %s\n", camName.c_str(),
          camSerialNumber.c_str());
-  printf("----------------- Current format informations -----------------\n");
+  printf(
+      "----------------- Current format informations "
+      "-----------------\n");
   camFormat.print();
-  printf("---------------------------------------------------------------\n");
+  printf(
+      "------------------------------------------------------------"
+      "---\n");
 
-  /*
-   * [ supported camera controls; The double quotes are the 'get_control' and
-   * the 'set_control' function string argument values. ]
-   *
-   *  [0] "Gain",          Value(default [min, step, max]): 64 ( 64 [0, 1, 127]
-   * ) [1] "Exposure (Absolute)", Value(default [min, step, max]): 39 ( 39 [1,
-   * 1, 625] )
-   *
-   */
-
-  const int32_t INTI_EXPOSURE_ABS = 130;
-  camera.set_control("Exposure Time, Absolute", INTI_EXPOSURE_ABS);
-
-  const int32_t INIT_BRIGHTNESS = 110;
-  camera.set_control("Gain", INIT_BRIGHTNESS);
-
-  // 1 - Manual mode, 3 - Apeture priority mode
-  // see v4l2-ctl -d[#] --all
-  const int32_t INTI_AUTO_EXPOSURE = 1;
-  const auto auto_exposure = camera.get_control("Auto Exposure");
-  camera.set_control("Auto Exposure", 1);
+  camera.set_control("Exposure Time, Absolute",
+                     node->get_parameter("Exposure").as_int());
+  camera.set_control("Gain", node->get_parameter("Brightness").as_int());
+  camera.set_control("Auto Exposure",
+                     node->get_parameter("Auto exposure mode").as_int());
 
   std::cout << "Current Gain: " << camera.get_control("Gain") << std::endl;
   std::cout << "Current Exposure Time: "
