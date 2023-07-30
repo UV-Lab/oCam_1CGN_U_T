@@ -15,6 +15,8 @@
 #include <filesystem>
 #include <fstream>
 #include <cstdio>
+#include <vector>
+#include <algorithm>
 #include <errno.h>
 
 #include <opencv2/opencv.hpp>
