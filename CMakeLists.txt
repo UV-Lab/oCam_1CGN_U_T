@@ -55,10 +55,15 @@ target_include_directories(ocam_node PUBLIC
 install(TARGETS ocam_node
   DESTINATION lib/${PROJECT_NAME})
 
-# # Install the launch files
-# install(DIRECTORY
-# launch
-# DESTINATION share/${PROJECT_NAME}/
-# )
+# Install the launch files
+install(DIRECTORY
+launch
+DESTINATION share/${PROJECT_NAME}/
+)
+
+install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}/
+)
 
 ament_package()
