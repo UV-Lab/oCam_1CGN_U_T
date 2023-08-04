@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
       continue;
     }
 
-    cv::cvtColor(srcImg, colorImg, cv::COLOR_BayerGB2BGR);
+    cv::cvtColor(srcImg, colorImg, cv::COLOR_BayerGB2RGB);
     node->publish_image(colorImg);
 
     rclcpp::spin_some(node);
